@@ -56,30 +56,36 @@ Ejemplo de accesos:
 
 ```asm
 0xc, 0x10, 0x14, 0x16, 0x1a, 0x1000, 0x1c, 0x1e, 0x20, 0x2000, 0x22, 0x3028, ...
-```asm
+```
+
 - Se repite 512 veces (porque avanza de a 8 bytes hasta que `a4 == 0x2000`).  
 - La última instrucción accedida es `0x2c` (`ret`).  
 
 ---
 
 ## 📌 Problemas que debe resolver un Sistema Operativo
+
 Este programa motiva varios problemas clásicos de diseño de OS:
 
 ### 1. Relocalización (Reallocation)  
+
 - Un programa debe poder ejecutarse en **cualquier lugar de memoria**.  
 - Si el código tiene direcciones absolutas (ej: siempre usa `0x1000`), no puede relocalizarse.  
 - Solución: usar **direcciones relativas al PC** + mecanismos del OS.  
 
 ### 2. Protección  
+
 - Un proceso no debe acceder a la memoria de otro.  
 - Se logra con **espacios de direcciones virtuales**, aislando cada programa.  
 
 ### 3. Eficiencia  
+
 - El acceso a memoria debe ser rápido → hardware agrega comparadores y sumadores para validar accesos.  
 
 ---
 
 ## 🗂️ Segmentación con Base, Límite y Permisos (rwx)
+
 Mecanismo clásico para lograr **virtualización de memoria**:
 
 - **Base register** → suma un valor fijo a toda dirección virtual.  
@@ -87,23 +93,27 @@ Mecanismo clásico para lograr **virtualización de memoria**:
 - **RWX bits** → controlan permisos de lectura, escritura y ejecución.  
 
 👉 Cada acceso de memoria pasa por:  
+
 1. **AND** con RWX (verificación de permisos).  
 2. **Comparación** con Limit.  
 3. **Suma** con Base.  
 
 Ejemplo:  
+
 - Para el programa anterior, límite ≈ `0x4000`.  
 - Se requiere RWX = `111` (leer, escribir y ejecutar).  
 
 ---
 
 ## ⚠️ Fragmentación Externa
+
 - Aun con segmentación, la memoria física puede quedar partida en huecos dispersos.  
 - Esto dificulta asignar grandes bloques contiguos.  
 
 ---
 
 ## 🔎 Identificación de Segmentos
+
 ¿Cómo sé a qué segmento (código, stack, heap) pertenece una dirección virtual?
 
 - **Explícito**: registros de control dedicados (ej: Intel).  
@@ -116,6 +126,7 @@ Ejemplo:
 ---
 
 ## 📖 Resumen de ideas clave
+
 - El programa en RISC-V implementa una **permutación de un array** usando índices.  
 - Esto motiva tres problemas de OS:  
   1. **Relocalización**.  
