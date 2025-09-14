@@ -1,0 +1,70 @@
+Paginacion (paging)
+Datos: Hay una publicacion que se llama paged out, otra pagefault
+La idea basica de segmentacion es tener los registros 0,1,2. Cada uno con base, limit(bounds), rwx (read-write-execute)
+Habian dos formas de nombrar el segmento (code, stack, heap). Una explicita (los primeros dos bits). 
+El espacio de direcciones siempre va a ser un espacio de direcciones virtual. Necesitamos relocalizacion, rapidez, proteccion y, ademas, no tener fragmentacion externa (hace que los recursos de la ram no se utilicen o se gasten). Pues el OS tiene que administrar de la mejor forma posible el hardware que tiene.
+Los primeros 3 problemas, los soluciona la segmentacion. Pero no la fragmentacion externa.
+La idea para solucionar la fragmentacion externa es aumentando la cantidad de segmentos que tenemos. En el cual, la base va a ser un tam fijo que van a ser las paginas. Hay que mantener la idea que paging es una exageracion de segmentacion.
+
+DEF: Paging es una funcion que mapea marcos virtuales en marcos fisicos
+El size de pagina actual es 4k.
+Una funcion puede ser sobreyectiva o no sobreyectiva. Inyectiva o no inyectiva. Total o parcial.
+La funcion va a ir del espacio virtual al espacio fisico (pues va a haber una parte de la ram fisica que no quiero usar). Ambos conjuntos finitos. Paging no es sobreyectiva porque van a haber areas del espacio fisico a las que no voy a llegar. 
+Puede ser inyectiva (es decir que tengo dos puntos en la memoria virutal que pueden acceder a la misma ram fisica)
+Ej el fork(): En lugar de copiar toda la imagen, lo que hago es que apunte al mismo lado en memoria. Lo que hacemos en el fork es copiar el read, pero no el write ni el execute. Pero si copia en el caso de que yo quiera escribir. Con algo que se llama demand paging (lo mismo a una lazy evaluation). Entonces, yo (kernel) hago una lazy evaluation de las pagings. Es decir, no hago nada de copiar memoria, y marco todas esas paginas como no escritura. Entonces yo tengo lo mejor de dos mundos: ahorro memoria y tengo independencia de procesos. Solamente se van a abrir las paginas que no se comparten. 
+Importante como switcheo de procesos y tengo los mismos mapas en memoria fisica para ahorrar trabajo.
+Por ejemplo: Todos los programas C necesitan la libreria estandar de c. La escribo para cada uno? No, apunto a la misma biblioteca. Ahorro ram de una manera brutal.
+En htop, se puede ver como se ocupa memoria virtual y memoria fisica. Por ej, brave me ocupa 14 gigas de ram, pero en la fisica (res), ocupa 300mb.
+COW (Copy On Write) --> Cuando alguien escribe, ahi copio.
+Los Os deben estar preparados para la guerra en todo momento. Los procesos tienen un perfil de uso de memoria que va cambiando mucho. Por ej: soy un web server y resulta ser que ocurrio una noticia muy importante. Tengo el server de x lado. Se genera un trafico brutal y cada parte de ese trafico va haciendo un fork de consulta. El OS entonces va haciendo copias de las pages. Entonces tiene capacidad para bancarse todo ese trafico que, si no pudiera copiarlo, no se podria bancar. El OS tiene que estar lo mas "fit" posible para que este software (os) le saque el mayor provecho a los recursos limitados que tenemos. Hay que reaccionar bien a cosas que pueden pasar.
+La memoria es cualquier cosa menos estatica. Cuando hay un proceso durmiendo hace rato y esta ocupando ram fisica, no esta bueno eso. Que haces? Page out -> Lo mandas al disco. Porque yo quiero tener la ram disponible para prepararme para este tiempo. NO para ese proceso que no se usa hace rato.
+Finalmente, todo esto fue la posibilidad de la funcion inyectiva.
+Que pasa con el tema de total. No total es que no mapeo una parte de la memoria, eso me sirve como limite, para que el stack y heap no se choquen. Alcanza con poner una pagina ahi que sirva como ese limite. 
+Como se implementa paging?
+Teneos la direccion virtual (empieza en msb, termina en lsb)
+Si yo tengo paginas de 4k , tomo 12 bits (2^12 = 4k) para la address y 3 bits que tiene la pagetable (la pagetable tiene 8 entradas por lo tanto 2^3=8) Lo que van a tener esos 3 bits van a ser un indice a la page table. La misma, tiene una base y esta en la ram. 
+En la pagetable voy a tener, si o si los bits R/W/X (ya tenemos 3 hasta ahora). Mezclo todo junto en algo que se llama PTE(page table entry)-> son todo lo que tenian los registros de segmentacion pero todo concatenado a nivel de bit. 
+Con struct, ponele que declaro un char rwx: 3. Estoy aclarando que ocupa 3 bits (entonces desde c puedo hablar con el hardware). 
+Entonces los 3 bits de la direccion virtual me indexan la pagetable, que dentro tiene pte. Como funciona entonces este mecanismo ejecutado por el MMU? La MMU toma los 3 bits de indexacion, los 12 bits los pasa derecho para la memoria fisica, y con esos 3 bits que quedan los traduzco de la page table en un proceso que se llama paging. Los 3 bits se llaman virtual frame y los 12 bits se llama offset. El virtual frame indexa, se toma ese valor indexado y eso pasa al physical frame en la memoria. 
+En resumen, la memoria virtual la parto en 2. El offset pasa directo. Del virtual frame, veo el valor que me indexa en el pagetable y de ahi traduzco eso (paging) al physical frame.
+
+Ej: 
+Tenemos las entradas 0 a 7 en la page table.
+0:001
+1:000
+2:011
+3:010
+4:101
+5:100
+6:111
+7:110
+
+Entonces tenemos la direccion 00011111111111
+Por paging, eso nos pasa a 00111111111111
+Este mecanismo es super poderoso, porque puedo usar cualquier permutacion que se me cante. 
+Tengo que decir si esa parte del dominio esta o no definido (porque quiero funciones parciales). Entonces agrego un bit a la page table que me dice si esa pagina esta mapeada o no. Por ahora entonces tenemos 3 bits que son los que se traducen al physical frame. 3 que son de R/W/X y uno que es de P para ver si esta mapeeado o no. Es el primer bit que se mira para saber si esta o no mapeado ese espacio de memoria.
+
+Si cumplen los bits R/W/X y el P => mapea el physical frame a donde indexo el virtual frame.
+
+Esta idea de puede ser explotada. Sacando la funcion inversa de un physical frame, podemos obtener el virtual frame de esa direccion. Es decir, dada una direccion fisica podemos saber donde esta en la direccion virtual y al reves. 
+
+Es como que, al tener eso de no inyectividad, que pasa si tengo en mi pagetable, todos los valores que pasan a physical frame que son iguales a 001? Y que todas las direcciones de memoria virtual, hacen que se mapee la misma direccion de memoria. Pegar dos paginas que apunten a la misma fisica, hacen que usa estructura que se llama ring buffer funcione mucho mejor. 
+Los mejores programas son los programas que NO tienen ifs. Si pegas dos paginas en una sola, te ahorras un par de ifs. Para hacer que el programa funcione mas rapido.
+La pagetable habla de marcos fisicos, en ese sentido hay que tener una disciplina muy fuerte, porque si le pierdo rastro a que se refiere lo de la page table, basicamente la memoria fisica no existe. Y esta pagetable tiene que estar mapeada tambien en la memoria virtual, pues tiene que estar previsto que una de las entradas se apunte a ella misma. Pues cada vez que lanzo un proceso tengo que crear y popular una page table. Es IMPERATIVO que la pagetable este si o si estar mapeada en memoria. 
+
+PoC||GTFO ->libro
+
+Apenas se bootea la compu, estas en modo fisico. Una vez pasaste al modo virtual, no se puede volver al "modo real". 
+
+De una direccion de 15 bits (virtual), paso a una direccion de 15 bits (fisica). La forma de cambiar eso es acortando o agregando columnas en la pagetable.
+En general, yo tengo una direccion virtual GIGANTE y un espacio fisico muchisimo mas chico. Mapeo un espacio muy grande virtual a un espacio muy pequenio.
+
+
+Grave problema de todo esto:
+Imaginemos caso de procesador de 32 bits, con paginas de 4k -> offset de 12 bits, y el vframe de 20 bits (pues 20 + 12 = 32 bits).
+Esto quiere decir que es una tabla de 20 entradas. Entonces la page table es una tabla que empieza en 0 y termina en 2^20 - 1. La PT solamente ocupa entonces 1MB. Resulta que el ancho es igual a 4 bytes (32 bits)
+Entonces ocupa en realidad 4MB (2^20 x 4 = 4MB). 
+El rpcesador B86 de intel es procesador de 32 bits que tiene paging. Solamente la page table entonces le ocupa 1MB (la page table de UN proceso, pues recordemos que cada proceso necesita una page table). Las ram en ese momento iban de 1 a 2 mb de ram -> solo la page table ya te ocupaba toda la ram casi.
+Hay una banda de ceros en esa page table. Entonces necesitamos una estructura de datos que comprima eso (para no gastar tanto espacio que son ceros), con un algoritmo impreso en hardware, le pusieron una cosa que se llama PD (page directory) que va a ser una especie de page table (forma de codigicacion que te permite guardar estructuras de datos de funciones sin meter tantos ceros). Esto entonces son page tables de varios niveles. Lo que hicieron fue hacer un esquema de 2 niveles, donde ahora yo en lugar de dividir 20 y 12, voy a fividir 10, 10 y 12. 
+Con los primeros 10 bits, indexo una PD y con los otros 10, la page table
+El primer PD va a apuntar a la base de la pagetable. Entonces al tener 2 niveles de paginas, tengo un esquema de arbol. Si yo quiero mapear solo 4k... el ejemplo sigue pero no entendi como funciona esta dinamica con el pd y pt.
