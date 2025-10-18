@@ -1,4 +1,4 @@
-# Clase 9 – Sistemas Operativos  
+# Clase Intro a concurrencia y locks  
 
 **Tema: Concurrencia, Race Conditions y Exclusión Mutua**  
 

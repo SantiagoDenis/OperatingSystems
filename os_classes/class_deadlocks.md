@@ -1,4 +1,4 @@
-# Clase 8 – Sistemas Operativos  
+# Clase Deadlocks 
 
 **Tema: Deadlocks y Productor–Consumidor**  
 
